@@ -92,4 +92,59 @@ class ResumeModel {
 
   bool get hasAISummary => aiSummary.isNotEmpty;
   bool get hasSkills => skills.isNotEmpty;
+  // ─── Convert Gemini's JSON response into ResumeModel ──────────────────────
+  factory ResumeModel.fromJson(Map<String, dynamic> json) {
+    return ResumeModel(
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      jobTitle: json['jobTitle'] ?? '',
+      city: json['city'] ?? '',
+      country: json['country'] ?? '',
+      linkedin: json['linkedin'] ?? '',
+      github: json['github'] ?? '',
+      website: json['website'] ?? '',
+      aiSummary: json['summary'] ?? '',
+      skills: (json['skills'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [],
+      techStack: json['techStack'] ?? '',
+      workExperiences: (json['workExperiences'] as List<dynamic>?)
+          ?.map((e) => WorkExperience(
+        jobTitle: e['jobTitle'] ?? '',
+        company: e['company'] ?? '',
+        location: e['location'] ?? '',
+        startDate: e['startDate'] ?? '',
+        endDate: e['endDate'] ?? '',
+        bullets: (e['bullets'] as List<dynamic>?)
+            ?.map((b) => b.toString())
+            .toList() ??
+            [],
+      ))
+          .toList() ??
+          [],
+      educations: (json['educations'] as List<dynamic>?)
+          ?.map((e) => Education(
+        degree: e['degree'] ?? '',
+        institution: e['institution'] ?? '',
+        startDate: e['startDate'] ?? '',
+        endDate: e['endDate'] ?? '',
+      ))
+          .toList() ??
+          [],
+      projects: (json['projects'] as List<dynamic>?)
+          ?.map((e) => Project(
+        name: e['name'] ?? '',
+        role: e['role'] ?? '',
+        description: e['description'] ?? '',
+        techStack: (e['techStack'] as List<dynamic>?)
+            ?.map((t) => t.toString())
+            .toList() ??
+            [],
+      ))
+          .toList() ??
+          [],
+    );
+  }
 }
