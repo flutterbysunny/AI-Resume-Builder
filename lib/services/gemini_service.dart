@@ -102,4 +102,103 @@ Return the list now:
     }
     return 'Error: Server busy hai, thodi der baad try karo';
   }
+
+  // ─── Parse Resume PDF → Structured JSON ────────────────────────────────────
+  static Future<Map<String, dynamic>?> parseResumePdf(List<int> pdfBytes) async {
+    final base64Pdf = base64Encode(pdfBytes);
+
+    final prompt = '''
+You are a resume parser. Extract ALL information from this resume PDF and return ONLY valid JSON — no markdown, no explanation, no backticks.
+
+Use EXACTLY this JSON structure:
+{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "jobTitle": "",
+  "city": "",
+  "country": "",
+  "linkedin": "",
+  "github": "",
+  "website": "",
+  "summary": "",
+  "techStack": "comma separated string of all technologies mentioned",
+  "skills": ["skill1", "skill2"],
+  "workExperiences": [
+    {
+      "jobTitle": "",
+      "company": "",
+      "location": "",
+      "startDate": "MM/YYYY",
+      "endDate": "MM/YYYY or Present",
+      "bullets": ["responsibility 1", "responsibility 2"]
+    }
+  ],
+  "educations": [
+    {
+      "degree": "",
+      "institution": "",
+      "startDate": "MM/YYYY",
+      "endDate": "MM/YYYY"
+    }
+  ],
+  "projects": [
+    {
+      "name": "",
+      "role": "",
+      "description": "",
+      "techStack": ["tech1", "tech2"]
+    }
+  ]
+}
+
+Rules:
+- Extract every work experience and education entry found
+- Extract every project mentioned, with its tech stack
+- If a field is not found, use empty string "" or empty array []
+- "summary" should be the existing profile/summary section if present, else leave empty
+- Return ONLY the JSON object, nothing else
+''';
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl?key=$_apiKey'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "contents": [
+            {
+              "parts": [
+                {
+                  "inline_data": {
+                    "mime_type": "application/pdf",
+                    "data": base64Pdf,
+                  }
+                },
+                {"text": prompt}
+              ]
+            }
+          ],
+          "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 4000,
+          }
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String text = data['candidates'][0]['content']['parts'][0]['text'];
+
+        // Clean markdown fences if Gemini adds them
+        text = text.replaceAll('```json', '').replaceAll('```', '').trim();
+
+        return jsonDecode(text) as Map<String, dynamic>;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
 }

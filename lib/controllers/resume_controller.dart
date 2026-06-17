@@ -23,6 +23,8 @@ class ResumeController extends GetxController {
   var selectedSkills = <String>[].obs;
   var currentStep = 0.obs;
 
+  var isUploadingResume = false.obs;
+
   // ─── Init ──────────────────────────────────────────────────────────────────
   @override
   void onInit() {
@@ -389,4 +391,60 @@ class ResumeController extends GetxController {
       'SQFLite', 'Java', 'Git',
     ]);
   }
+
+  // ─── Resume Upload & Auto-fill ─────────────────────────────────────────────
+
+  Future<void> uploadAndParseResume(List<int> pdfBytes) async {
+    isUploadingResume.value = true;
+
+    final json = await GeminiService.parseResumePdf(pdfBytes);
+
+    if (json == null) {
+      Get.snackbar(
+        '⚠️ Parsing Failed',
+        'Resume read nahi ho saka, manually fill karo ya dobara try karo',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
+      isUploadingResume.value = false;
+      return;
+    }
+
+    try {
+      final parsed = ResumeModel.fromJson(json);
+
+      // Text controllers update karo
+      nameController.text = parsed.name;
+      emailController.text = parsed.email;
+      phoneController.text = parsed.phone;
+      jobTitleController.text = parsed.jobTitle;
+      cityController.text = parsed.city;
+      countryController.text = parsed.country;
+      linkedinController.text = parsed.linkedin;
+      githubController.text = parsed.github;
+      websiteController.text = parsed.website;
+
+      // Resume object update karo
+      resume.value = parsed;
+
+      // Skills select karo
+      selectedSkills.assignAll(parsed.skills.take(10));
+
+      Get.snackbar(
+        '✅ Resume Imported!',
+        'Saari details auto-fill ho gayi — review karo aur aage badho',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      Get.snackbar(
+        '⚠️ Error',
+        'Data process karne mein error aaya: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+
+    isUploadingResume.value = false;
+  }
+
 }
